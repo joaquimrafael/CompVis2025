@@ -7,5 +7,19 @@
 * Joaquim Rafael Mariano Prieto Pereira - 10408805
 * Lucas Trebacchetti Eiras - 10401973
 
+### Descrição geral do projeto:
 Este projeto tem como proposito desenvolver um software de processamento de imagens em linguagem C, usando a biblioteca
 SDL (Simple DirectMedia Layer) em sua versão 3.
+
+### Funcionamento do projeto:
+
+### Contribuições individuas: 
+#### Antonio:
+
+#### Gustavo:
+
+#### Joaquim:
+
+#### Lucas:
+
+### Compilação e Execução: 
