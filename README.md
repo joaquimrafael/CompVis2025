@@ -1,6 +1,18 @@
 # Projeto 1 (Proj1) – Processamento de imagens
 ## Computação Visual, Ciência da Computação Mackenzie, Turma 07N 2025.2
-### Grupo :
+
+## Índice
+* [Grupo](#grupo)
+* [Descrição geral do projeto](#descrição-geral-do-projeto)
+* [Funcionamento do projeto](#funcionamento-do-projeto)
+* [Contribuições individuas](#contribuições-individuas)
+  * [Antonio](#antonio)
+  * [Gustavo](#gustavo)
+  * [Joaquim](#joaquim)
+  * [Lucas](#lucas)
+* [Compilação e Execução](#compilação-e-execução)
+
+### Grupo:
 
 * Antonio Carlos Sciamarelli Neto - 10409160
 * Gustavo Matta - 10410154
