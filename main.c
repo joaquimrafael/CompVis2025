@@ -25,8 +25,8 @@ char *IMAGE_FILENAME;
 
 enum constants
 {
-  DEFAULT_WINDOW_WIDTH = 640,
-  DEFAULT_WINDOW_HEIGHT = 480,
+  DEFAULT_WINDOW_WIDTH = 0,
+  DEFAULT_WINDOW_HEIGHT = 0,
 };
 
 typedef struct MyWindow MyWindow;
