@@ -13,6 +13,8 @@
   * [Joaquim](#joaquim)
   * [Lucas](#lucas)
 * [Compilação e Execução](#compilação-e-execução)
+  * [MacOS](#macos)
+  * [Windows](#windows)
 
 ### Grupo
 
@@ -42,5 +44,7 @@ SDL (Simple DirectMedia Layer) em sua versão 3.
 
 #### MacOS
 
-Compilar: gcc -o meu_app.exe main.c $(pkgconf --cflags --libs sdl3 sdl3-image)
-Executar: ./meu_app.exe <nome_do_arquivo>
+* Compilar: gcc -o meu_app.exe main.c $(pkgconf --cflags --libs sdl3 sdl3-image)
+* Executar: ./meu_app.exe <nome_do_arquivo>
+
+#### Windows
