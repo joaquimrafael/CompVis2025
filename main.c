@@ -250,7 +250,7 @@ void convertToGray(SDL_Surface *surface)
     {
         Uint8 r,g,b,a;
         SDL_GetRGBA(pixel[i],format,NULL,&r,&g,&b,&a);
-        double y = 0.2125*(double)+0.7154*(double)g+0.0721*(double)b;
+        double y = 0.2125*(double)r+0.7154*(double)g+0.0721*(double)b;
         Uint8 gray = (Uint8)y;
 
         pixel[i] = SDL_MapRGBA(format,NULL,gray,gray,gray,a);
