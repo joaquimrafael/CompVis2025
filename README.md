@@ -48,3 +48,6 @@ SDL (Simple DirectMedia Layer) em sua versão 3.
 * Executar: ./meu_app.exe <nome_do_arquivo>
 
 #### Windows
+
+* Compilar: Configurar SDL3 e SDL3_image em tasks.json do editor de texto e adicionar .dll(s) da lib
+* Executar: ./meu_app.exe <nome_do_arquivo>
