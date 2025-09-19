@@ -227,31 +227,68 @@ static void loop(void)
 {
   SDL_Log(">>> loop()");
 
+  SDL_Cursor *cursor_arrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
+  SDL_Cursor *cursor_hand  = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
+
   bool mustRefresh = false;
   render();
 
   SDL_Event event;
   bool isRunning = true;
-  while (isRunning)
+  bool last_hovered = false;
+
+  while(isRunning)
   {
-    while (SDL_PollEvent(&event))
+    float mouse_x_global, mouse_y_global;
+    SDL_GetGlobalMouseState(&mouse_x_global, &mouse_y_global);
+    int child_x, child_y;
+    SDL_GetWindowPosition(g_windowChild.window, &child_x, &child_y);
+    int mouse_x = mouse_x_global - child_x;
+    int mouse_y = mouse_y_global - child_y;
+    bool hovering = (mouse_x>=g_button.rect.x && mouse_x<=g_button.rect.x+g_button.rect.w &&
+                     mouse_y>=g_button.rect.y && mouse_y<=g_button.rect.y+g_button.rect.h);
+    if(hovering!=g_button.is_hovered)
     {
-      switch (event.type)
+      g_button.is_hovered = hovering;
+      SDL_SetCursor(hovering?cursor_hand:cursor_arrow);
+      mustRefresh = true;
+    }
+    while(SDL_PollEvent(&event))
+    {
+      switch(event.type)
       {
-      case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-        Uint32 windowID = event.window.windowID;
-        if (windowID == SDL_GetWindowID(g_window.window) || windowID == SDL_GetWindowID(g_windowChild.window)) {
-          isRunning = false;
+        case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+          if(event.window.windowID == SDL_GetWindowID(g_window.window) ||
+             event.window.windowID == SDL_GetWindowID(g_windowChild.window))
+            isRunning = false;
+            break;
+
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+          if(g_button.is_hovered)
+          {
+          g_button.is_pressed = true;
+          mustRefresh = true;
+          }
           break;
-        }
+
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+          if(g_button.is_pressed && g_button.is_hovered)
+            g_button.was_clicked = true;
+            g_button.is_pressed = false;
+            mustRefresh = true;
+            break;
       }
     }
-    if (mustRefresh)
+    if(mustRefresh)
     {
-      render();
-      mustRefresh = false;
+        render();
+        mustRefresh = false;
     }
-  }
+    SDL_Delay(10);
+}
+
+  SDL_DestroyCursor(cursor_arrow);
+  SDL_DestroyCursor(cursor_hand);
   
   SDL_Log("<<< loop()");
 }
@@ -431,7 +468,7 @@ void renderButton() {
       g_button.text_w + 2*padding_x,
       g_button.text_h + 2*padding_y
     };
-
+    g_button.rect = text_bg;
     SDL_SetRenderDrawColor(g_windowChild.renderer, current_color.r, current_color.g, current_color.b, current_color.a);
     SDL_RenderFillRect(g_windowChild.renderer, &text_bg);
 
@@ -457,13 +494,13 @@ void createButton()
     SDL_Log("*** Erro ao abrir fonte: %s", SDL_GetError());
     return;
   }
-  g_button.color_normal = (SDL_Color){100, 100, 200, 255}; //Azul
-  g_button.color_hover = (SDL_Color){150, 150, 220, 255};  //Azul claro
-  g_button.color_pressed = (SDL_Color){50, 50, 150, 255};   //Azul escuro
+  g_button.color_normal = (SDL_Color){0, 77, 156, 255}; //Azul
+  g_button.color_hover = (SDL_Color){183, 219, 255, 255};  //Azul claro
+  g_button.color_pressed = (SDL_Color){17, 59, 102, 255};   //Azul escuro
   
   g_button.text = BUTTON_ORIGINAL;
   
-  SDL_Surface *text_surface = TTF_RenderText_Solid(font, BUTTON_ORIGINAL, SDL_strlen(BUTTON_ORIGINAL), (SDL_Color){255, 255, 255, 255});
+  SDL_Surface *text_surface = TTF_RenderText_Solid(font, BUTTON_ORIGINAL, SDL_strlen(BUTTON_ORIGINAL), (SDL_Color){0, 0, 0, 255});
   if(text_surface)
   {
     g_button.text_texture = SDL_CreateTextureFromSurface(g_windowChild.renderer, text_surface);
