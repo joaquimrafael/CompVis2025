@@ -67,6 +67,13 @@ struct Button
     bool was_clicked;
 };
 
+typedef struct Histogram Histogram;
+struct Histogram
+{
+    SDL_FRect rect;
+};
+
+
 // Global variables
 
 static MyWindow g_window = { .window = NULL, .renderer = NULL };
@@ -89,13 +96,24 @@ static Button g_button = {
     .is_pressed = false,
     .was_clicked = false
 };
+static Histogram g_hist = {
+    .rect = {0,0,0,0}
+};
 
 // Function declarations
 
 static bool MyWindow_initialize(MyWindow *window, const char *title, int width, int height, SDL_WindowFlags window_flags);
 static void MyWindow_destroy(MyWindow *window);
 static void MyImage_destroy(MyImage *image);
+static void createButton();
 static void renderButton();
+static void toggleButtonText();
+static void loadHistogramButton();
+static SDL_AppResult initialize();
+static void loadImage();
+static void render();
+static void createHistogram();
+static void renderHistogram();
 
 // Function implementations
 
@@ -220,6 +238,7 @@ static void render(void)
   SDL_SetRenderDrawColor(g_windowChild.renderer, 128, 128, 128, 255);
   SDL_RenderClear(g_windowChild.renderer);
   renderButton();
+  renderHistogram();
   SDL_RenderPresent(g_windowChild.renderer);
 }
 
@@ -251,6 +270,12 @@ static void loop(void)
     {
       g_button.is_hovered = hovering;
       SDL_SetCursor(hovering?cursor_hand:cursor_arrow);
+      mustRefresh = true;
+    }
+    if(g_button.was_clicked)
+    {
+      toggleButtonText();
+      g_button.was_clicked = false;
       mustRefresh = true;
     }
     while(SDL_PollEvent(&event))
@@ -445,7 +470,45 @@ void loadImage(const char *filename, SDL_Renderer *renderer, MyImage *output_ima
   SDL_Log("<<< load_rgba32(\"%s\")", filename);
 }
 
-void renderButton() {
+void toggleButtonText()
+{
+    SDL_Log("<<< toggleButtonText()");
+    if(strcmp(g_button.text, BUTTON_ORIGINAL) == 0)
+      g_button.text = BUTTON_EQUALIZED;
+    else
+      g_button.text = BUTTON_ORIGINAL;
+    if(g_button.text_texture)
+    {
+      SDL_DestroyTexture(g_button.text_texture);
+      g_button.text_texture = NULL;
+    }
+    TTF_Font *font = TTF_OpenFont("C:/Windows/Fonts/Arial.ttf", 24);
+    if(!font)
+    {
+      SDL_Log("*** Erro ao abrir fonte: %s", SDL_GetError());
+      return;
+    }
+    SDL_Surface *text_surface = TTF_RenderText_Solid(font, g_button.text, SDL_strlen(g_button.text), (SDL_Color){0,0,0,255});
+    if(text_surface)
+    {
+      g_button.text_texture = SDL_CreateTextureFromSurface(g_windowChild.renderer, text_surface);
+      g_button.text_w = (int)text_surface->w;
+      g_button.text_h = (int)text_surface->h;
+      SDL_DestroySurface(text_surface);
+    }
+    else
+    {
+      g_button.text_texture = NULL;
+      g_button.text_w = g_button.text_h = 0;
+      SDL_Log("*** Erro ao criar a superfície do texto: %s", SDL_GetError());
+    }
+    TTF_CloseFont(font);
+    SDL_Log(">>> toggleButtonText()");
+}
+
+
+void renderButton()
+{
   SDL_Log("<<< renderButton()");
 
   SDL_Color current_color = g_button.color_normal;
@@ -456,7 +519,6 @@ void renderButton() {
   {
       current_color = g_button.color_hover;
   }
-
   if(g_button.text_texture){
     int padding_x = 15;
     int padding_y = 5;
@@ -480,7 +542,6 @@ void renderButton() {
     };
     SDL_RenderTexture(g_windowChild.renderer, g_button.text_texture, NULL, &text_rect);
   }
-
   SDL_Log(">>> renderButton()");
 }
 
@@ -515,12 +576,57 @@ void createButton()
     g_button.text_h = 0;
     SDL_Log("*** Erro ao criar a superfície do texto: %s", SDL_GetError());
   }
+  TTF_CloseFont(font);
   SDL_Log(">>> createButton()");
 }
+
+void renderHistogram()
+{
+    SDL_Log("<<< renderHistogram()");
+    if(g_hist.rect.w == 0 || g_hist.rect.h == 0)
+      return;
+
+    SDL_Color hist_color = {200, 200, 200, 255};
+    SDL_SetRenderDrawColor(g_windowChild.renderer, hist_color.r, hist_color.g, hist_color.b, hist_color.a);
+    SDL_RenderFillRect(g_windowChild.renderer, &g_hist.rect);
+
+    int eixo_y_altura = 101;
+    int eixo_x_comprimento = 257;
+
+    SDL_SetRenderDrawColor(g_windowChild.renderer, 255, 0, 239, 255);
+
+    SDL_RenderLine(g_windowChild.renderer,
+                   g_hist.rect.x,
+                   g_hist.rect.y + g_hist.rect.h - 1,
+                   g_hist.rect.x + eixo_x_comprimento - 1,
+                   g_hist.rect.y + g_hist.rect.h - 1);
+
+    SDL_RenderLine(g_windowChild.renderer,
+                   g_hist.rect.x,
+                   g_hist.rect.y + g_hist.rect.h - eixo_y_altura,
+                   g_hist.rect.x,
+                   g_hist.rect.y + g_hist.rect.h - 1);
+
+    SDL_Log(">>> renderHistogram()");
+}
+
+
+void createHistogram()
+{
+  g_hist.rect.w = 280;
+  g_hist.rect.h = 200;
+
+  g_hist.rect.x = (float)DEFAULT_WINDOW_CHILD_WIDTH / 2.0f - (float)g_hist.rect.w / 2.0f;
+
+  g_hist.rect.y = (float)DEFAULT_WINDOW_CHILD_HEIGHT / 2.0f - (float)g_hist.rect.h/ 1.7f; 
+}
+
+
 
 void loadHistogramButton()
 {
   createButton();
+  createHistogram();
 }
 
 int main(int argc, char *argv[])
@@ -539,7 +645,7 @@ int main(int argc, char *argv[])
 
     loadImage(IMAGE_FILENAME, g_window.renderer, &g_image);
 
-    loadHistogramButton(&g_windowChild);
+    loadHistogramButton();
 
     createWindow();
 
