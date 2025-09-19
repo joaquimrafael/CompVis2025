@@ -52,7 +52,7 @@ struct MyImage
 typedef struct Button Button;
 struct Button
 {
-    SDL_Rect rect;
+    SDL_FRect rect;
     SDL_Color color_normal;
     SDL_Color color_hover;
     SDL_Color color_pressed;
@@ -89,6 +89,7 @@ static Button g_button = {
     .is_pressed = false,
     .was_clicked = false
 };
+
 // Function declarations
 
 static bool MyWindow_initialize(MyWindow *window, const char *title, int width, int height, SDL_WindowFlags window_flags);
@@ -409,30 +410,43 @@ void loadImage(const char *filename, SDL_Renderer *renderer, MyImage *output_ima
 
 void renderButton() {
   SDL_Log("<<< renderButton()");
+
   SDL_Color current_color = g_button.color_normal;
   if(g_button.is_pressed)
   {
-    current_color = g_button.color_pressed;
+      current_color = g_button.color_pressed;
   }else if(g_button.is_hovered)
   {
-    current_color = g_button.color_hover;
+      current_color = g_button.color_hover;
   }
-    
-  SDL_SetRenderDrawColor(g_windowChild.renderer, current_color.r, current_color.g, current_color.b, current_color.a);
-  SDL_RenderFillRect(g_windowChild.renderer, &g_button.rect);
-  
-  if(g_button.text_texture)
-  {
+
+  if(g_button.text_texture){
+    int padding_x = 15;
+    int padding_y = 5;
+    int window_w, window_h;
+    SDL_GetWindowSize(g_windowChild.window, &window_w, &window_h);
+    SDL_FRect text_bg = {
+      (window_w - (g_button.text_w + 2*padding_x)) / 2.0f,
+      window_h - (g_button.text_h + 2*padding_y) - 5,
+      g_button.text_w + 2*padding_x,
+      g_button.text_h + 2*padding_y
+    };
+
+    SDL_SetRenderDrawColor(g_windowChild.renderer, current_color.r, current_color.g, current_color.b, current_color.a);
+    SDL_RenderFillRect(g_windowChild.renderer, &text_bg);
+
     SDL_FRect text_rect = {
-      g_button.rect.x + (g_button.rect.w - g_button.text_w) / 2,
-      g_button.rect.y + (g_button.rect.h - g_button.text_h) / 2,
+      text_bg.x + padding_x,
+      text_bg.y + padding_y,
       g_button.text_w,
       g_button.text_h
     };
     SDL_RenderTexture(g_windowChild.renderer, g_button.text_texture, NULL, &text_rect);
   }
+
   SDL_Log(">>> renderButton()");
 }
+
 
 void createButton()
 {
@@ -443,22 +457,13 @@ void createButton()
     SDL_Log("*** Erro ao abrir fonte: %s", SDL_GetError());
     return;
   }
-  int window_w, window_h;
-  SDL_GetWindowSize(g_windowChild.window, &window_w, &window_h);
-  g_button.rect.w = window_w;
-  g_button.rect.h = window_h / 3;
-  g_button.rect.x = 160;
-  g_button.rect.y = 220;
   g_button.color_normal = (SDL_Color){100, 100, 200, 255}; //Azul
   g_button.color_hover = (SDL_Color){150, 150, 220, 255};  //Azul claro
   g_button.color_pressed = (SDL_Color){50, 50, 150, 255};   //Azul escuro
   
   g_button.text = BUTTON_ORIGINAL;
-  g_button.is_hovered = false;
-  g_button.is_pressed = false;
-  g_button.was_clicked = false;
   
-  SDL_Surface *text_surface = TTF_RenderText_Solid(font, BUTTON_ORIGINAL, SDL_strlen(BUTTON_ORIGINAL), (SDL_Color){0, 0, 0, 255});
+  SDL_Surface *text_surface = TTF_RenderText_Solid(font, BUTTON_ORIGINAL, SDL_strlen(BUTTON_ORIGINAL), (SDL_Color){255, 255, 255, 255});
   if(text_surface)
   {
     g_button.text_texture = SDL_CreateTextureFromSurface(g_windowChild.renderer, text_surface);
