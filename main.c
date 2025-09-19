@@ -27,6 +27,8 @@ enum constants
 {
   DEFAULT_WINDOW_WIDTH = 0,
   DEFAULT_WINDOW_HEIGHT = 0,
+  DEFAULT_WINDOW_CHILD_WIDTH = 320,
+  DEFAULT_WINDOW_CHILD_HEIGHT = 240,
 };
 
 typedef struct MyWindow MyWindow;
@@ -47,6 +49,7 @@ struct MyImage
 // Global variables
 
 static MyWindow g_window = { .window = NULL, .renderer = NULL };
+static MyWindow g_windowChild = {.window = NULL, .renderer = NULL};
 static MyImage g_image = {
   .surface = NULL,
   .texture = NULL,
@@ -133,6 +136,21 @@ static SDL_AppResult initialize(void)
     return SDL_APP_FAILURE;
   }
 
+  SDL_Log("\tCriando janela filho e renderizador...");
+  if (!MyWindow_initialize(&g_windowChild, WINDOW_TITLE2, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, 0))
+  {
+    SDL_Log("\tErro ao criar a janela filho e/ou renderizador: %s", SDL_GetError());
+    SDL_Log("<<< initialize()");
+    return SDL_APP_FAILURE;
+  }
+  
+  if(SDL_SetWindowParent(&g_windowChild.window, &g_window.window) != 0) {
+    SDL_Log("\tErro setar parentesco entre a janela filho e pai: %s", SDL_GetError());
+    SDL_Log("<<< initialize()");
+    return SDL_APP_FAILURE;
+  }
+
+
   SDL_Log("<<< initialize()");
   return SDL_APP_CONTINUE;
 }
@@ -143,6 +161,7 @@ static void shutdown(void)
 
   MyImage_destroy(&g_image);
   MyWindow_destroy(&g_window);
+  MyWindow_destroy(&g_windowChild);
 
   SDL_Log("\tEncerrando SDL...");
   SDL_Quit();
@@ -157,7 +176,11 @@ static void render(void)
 
   SDL_RenderTexture(g_window.renderer, g_image.texture, &g_image.rect, &g_image.rect);
 
+  SDL_SetRenderDrawColor(g_windowChild.renderer, 128, 128, 128, 255);
+  SDL_RenderClear(g_windowChild.renderer);
+
   SDL_RenderPresent(g_window.renderer);
+  SDL_RenderPresent(g_windowChild.renderer);
 }
 
 static void loop(void)
@@ -175,13 +198,14 @@ static void loop(void)
     {
       switch (event.type)
       {
-      case SDL_EVENT_QUIT:
-        isRunning = false;
-        break;
-
+      case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+        Uint32 windowID = event.window.windowID;
+        if (windowID == SDL_GetWindowID(g_window.window) || windowID == SDL_GetWindowID(g_windowChild.window)) {
+          isRunning = false;
+          break;
+        }
       }
     }
-
     if (mustRefresh)
     {
       render();
@@ -197,6 +221,10 @@ void createWindow()
 {
     int imageWidth = (int)g_image.rect.w;
     int imageHeight = (int)g_image.rect.h;
+
+    int imageWidthChild = DEFAULT_WINDOW_CHILD_WIDTH;
+    int imageWidthHeight = DEFAULT_WINDOW_CHILD_HEIGHT;
+    
     if (imageWidth > DEFAULT_WINDOW_WIDTH || imageHeight > DEFAULT_WINDOW_HEIGHT)
     {
         int top = 0;
@@ -208,9 +236,19 @@ void createWindow()
 
         SDL_SetWindowSize(g_window.window, imageWidth, imageHeight);
         SDL_SetWindowPosition(g_window.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-
-        SDL_SyncWindow(g_window.window);
     }
+
+    SDL_SetWindowSize(g_windowChild.window, imageWidthChild, imageWidthHeight);
+
+    int main_x, main_y, main_w, main_h;
+    SDL_GetWindowPosition(g_window.window, &main_x, &main_y);
+    SDL_GetWindowSize(g_window.window, &main_w, &main_h);
+    int side_x = main_x + main_w + 10;
+    int side_y = main_y;
+    SDL_SetWindowPosition(g_windowChild.window, side_x, side_y);
+
+    SDL_SyncWindow(g_window.window);
+    SDL_SyncWindow(g_windowChild.window);
 }
 
 bool isGrayScale(SDL_Surface *surface)
