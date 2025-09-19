@@ -16,11 +16,14 @@ Lucas Trebacchetti Eiras - 10401973
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3_image/SDL_image.h>
+#include <SDL3_ttf/SDL_ttf.h>
 
 // Constants
 
 static const char *WINDOW_TITLE = "Tela Principal";
 static const char *WINDOW_TITLE2 = "Tela Secundária";
+static const char *BUTTON_ORIGINAL = "Original";
+static const char *BUTTON_EQUALIZED = "Equalizado";
 char *IMAGE_FILENAME;
 
 enum constants
@@ -46,6 +49,24 @@ struct MyImage
   SDL_FRect rect;
 };
 
+typedef struct Button Button;
+struct Button
+{
+    SDL_Rect rect;
+    SDL_Color color_normal;
+    SDL_Color color_hover;
+    SDL_Color color_pressed;
+    
+    const char *text;
+    SDL_Texture *text_texture;
+    int text_w;
+    int text_h;
+    
+    bool is_hovered;
+    bool is_pressed;
+    bool was_clicked;
+};
+
 // Global variables
 
 static MyWindow g_window = { .window = NULL, .renderer = NULL };
@@ -55,12 +76,25 @@ static MyImage g_image = {
   .texture = NULL,
   .rect = { .x = 0.0f, .y = 0.0f, .w = 0.0f, .h = 0.0f }
 };
-
+static Button g_button = {
+    .rect = {0, 0, 0, 0},
+    .color_normal = {0, 0, 0, 0},
+    .color_hover  = {0, 0, 0, 0},
+    .color_pressed = {0, 0, 0, 0},
+    .text = NULL,
+    .text_texture = NULL,
+    .text_w = 0,
+    .text_h = 0,
+    .is_hovered = false,
+    .is_pressed = false,
+    .was_clicked = false
+};
 // Function declarations
 
 static bool MyWindow_initialize(MyWindow *window, const char *title, int width, int height, SDL_WindowFlags window_flags);
 static void MyWindow_destroy(MyWindow *window);
 static void MyImage_destroy(MyImage *image);
+static void renderButton();
 
 // Function implementations
 
@@ -150,6 +184,12 @@ static SDL_AppResult initialize(void)
     return SDL_APP_FAILURE;
   }
 
+  if(TTF_Init() == -1)
+  {
+    SDL_Log("\t*** Erro ao inicializar SDL_ttf: %s", SDL_GetError());
+    SDL_Log("<<< initialize()");
+    return SDL_APP_FAILURE;
+  }
 
   SDL_Log("<<< initialize()");
   return SDL_APP_CONTINUE;
@@ -173,13 +213,12 @@ static void render(void)
 {
   SDL_SetRenderDrawColor(g_window.renderer, 128, 128, 128, 255);
   SDL_RenderClear(g_window.renderer);
-
   SDL_RenderTexture(g_window.renderer, g_image.texture, &g_image.rect, &g_image.rect);
+  SDL_RenderPresent(g_window.renderer);
 
   SDL_SetRenderDrawColor(g_windowChild.renderer, 128, 128, 128, 255);
   SDL_RenderClear(g_windowChild.renderer);
-
-  SDL_RenderPresent(g_window.renderer);
+  renderButton();
   SDL_RenderPresent(g_windowChild.renderer);
 }
 
@@ -368,6 +407,80 @@ void loadImage(const char *filename, SDL_Renderer *renderer, MyImage *output_ima
   SDL_Log("<<< load_rgba32(\"%s\")", filename);
 }
 
+void renderButton() {
+  SDL_Log("<<< renderButton()");
+  SDL_Color current_color = g_button.color_normal;
+  if(g_button.is_pressed)
+  {
+    current_color = g_button.color_pressed;
+  }else if(g_button.is_hovered)
+  {
+    current_color = g_button.color_hover;
+  }
+    
+  SDL_SetRenderDrawColor(g_windowChild.renderer, current_color.r, current_color.g, current_color.b, current_color.a);
+  SDL_RenderFillRect(g_windowChild.renderer, &g_button.rect);
+  
+  if(g_button.text_texture)
+  {
+    SDL_FRect text_rect = {
+      g_button.rect.x + (g_button.rect.w - g_button.text_w) / 2,
+      g_button.rect.y + (g_button.rect.h - g_button.text_h) / 2,
+      g_button.text_w,
+      g_button.text_h
+    };
+    SDL_RenderTexture(g_windowChild.renderer, g_button.text_texture, NULL, &text_rect);
+  }
+  SDL_Log(">>> renderButton()");
+}
+
+void createButton()
+{
+  SDL_Log("<<< createButton()");
+  TTF_Font *font = TTF_OpenFont("C:/Windows/Fonts/Arial.ttf", 24);
+  if(!font)
+  {
+    SDL_Log("*** Erro ao abrir fonte: %s", SDL_GetError());
+    return;
+  }
+  int window_w, window_h;
+  SDL_GetWindowSize(g_windowChild.window, &window_w, &window_h);
+  g_button.rect.w = window_w;
+  g_button.rect.h = window_h / 3;
+  g_button.rect.x = 160;
+  g_button.rect.y = 220;
+  g_button.color_normal = (SDL_Color){100, 100, 200, 255}; //Azul
+  g_button.color_hover = (SDL_Color){150, 150, 220, 255};  //Azul claro
+  g_button.color_pressed = (SDL_Color){50, 50, 150, 255};   //Azul escuro
+  
+  g_button.text = BUTTON_ORIGINAL;
+  g_button.is_hovered = false;
+  g_button.is_pressed = false;
+  g_button.was_clicked = false;
+  
+  SDL_Surface *text_surface = TTF_RenderText_Solid(font, BUTTON_ORIGINAL, SDL_strlen(BUTTON_ORIGINAL), (SDL_Color){0, 0, 0, 255});
+  if(text_surface)
+  {
+    g_button.text_texture = SDL_CreateTextureFromSurface(g_windowChild.renderer, text_surface);
+    g_button.text_w = (int)text_surface->w;
+    g_button.text_h = (int)text_surface->h;
+    SDL_DestroySurface(text_surface);
+  }
+  else
+  {
+    g_button.text_texture = NULL;
+    g_button.text_w = 0;
+    g_button.text_h = 0;
+    SDL_Log("*** Erro ao criar a superfície do texto: %s", SDL_GetError());
+  }
+  SDL_Log(">>> createButton()");
+}
+
+void loadHistogramButton()
+{
+  createButton();
+}
+
 int main(int argc, char *argv[])
 {
     atexit(shutdown);
@@ -383,6 +496,8 @@ int main(int argc, char *argv[])
     IMAGE_FILENAME = argv[1];
 
     loadImage(IMAGE_FILENAME, g_window.renderer, &g_image);
+
+    loadHistogramButton(&g_windowChild);
 
     createWindow();
 
