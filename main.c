@@ -116,7 +116,6 @@ static SDL_AppResult initialize();
 static void loadImage();
 static void render();
 static void createHistogram();
-static void renderHistogram();
 static void renderHistogramBars();
 static void countIntensity();
 
@@ -255,7 +254,6 @@ static void render(void)
   SDL_SetRenderDrawColor(g_windowChild.renderer, 128, 128, 128, 255);
   SDL_RenderClear(g_windowChild.renderer);
   renderButton();
-  renderHistogram();
   renderHistogramBars();
   SDL_RenderPresent(g_windowChild.renderer);
 }
@@ -604,37 +602,6 @@ void createButton()
 }
 
 
-void renderHistogram()
-{
-    SDL_Log("<<< renderHistogram()");
-    if(g_hist.rect.w == 0 || g_hist.rect.h == 0)
-      return;
-
-    SDL_Color hist_color = {200, 200, 200, 255};
-    SDL_SetRenderDrawColor(g_windowChild.renderer, hist_color.r, hist_color.g, hist_color.b, hist_color.a);
-    SDL_RenderFillRect(g_windowChild.renderer, &g_hist.rect);
-
-    int eixo_y_altura = 101;
-    int eixo_x_comprimento = 257;
-
-    SDL_SetRenderDrawColor(g_windowChild.renderer, 255, 0, 239, 255);
-
-    SDL_RenderLine(g_windowChild.renderer,
-                   g_hist.rect.x,
-                   g_hist.rect.y + g_hist.rect.h - 1,
-                   g_hist.rect.x + eixo_x_comprimento - 1,
-                   g_hist.rect.y + g_hist.rect.h - 1);
-
-    SDL_RenderLine(g_windowChild.renderer,
-                   g_hist.rect.x,
-                   g_hist.rect.y + g_hist.rect.h - eixo_y_altura,
-                   g_hist.rect.x,
-                   g_hist.rect.y + g_hist.rect.h - 1);
-
-    SDL_Log(">>> renderHistogram()");
-}
-
-
 void createHistogram()
 {
   SDL_Log("<<< createHistogram()");
@@ -650,29 +617,45 @@ void createHistogram()
 
 void renderHistogramBars()
 {
+  SDL_Log("<<< renderHistogramBars()");
   float *intensity = equalized ? counterIntensityEqualized : counterIntensity;
 
   SDL_SetRenderDrawColor(g_windowChild.renderer, 0, 0, 0, 255);
 
   float base_y = g_hist.rect.y + g_hist.rect.h - 1;
   float max_bar_height = g_hist.rect.h - 20;
+  float bar_w = g_hist.rect.w / 256.0f;
 
   float max_value = 0.0f;
   for(int i=0;i<256;i++)
       if(intensity[i] > max_value) max_value = intensity[i];
-
   if(max_value == 0) max_value = 1.0f;
 
   for(int i=0;i<256;i++)
   {
-    SDL_FRect bar;
-    bar.w = (float)g_hist.rect.w / 256.0f;
-    bar.h = (intensity[i] / max_value) * max_bar_height;
-    bar.x = g_hist.rect.x + i * bar.w;
-    bar.y = base_y - bar.h;
-    SDL_RenderFillRect(g_windowChild.renderer, &bar);
+      SDL_FRect bar;
+      bar.w = bar_w;
+      bar.h = (intensity[i] / max_value) * max_bar_height;
+      bar.x = g_hist.rect.x + i * bar_w;
+      bar.y = base_y - bar.h;
+      SDL_RenderFillRect(g_windowChild.renderer, &bar);
   }
+
+  SDL_SetRenderDrawColor(g_windowChild.renderer, 255, 0, 239, 255);
+  SDL_RenderLine(g_windowChild.renderer,
+                  g_hist.rect.x,
+                  base_y,
+                  g_hist.rect.x + g_hist.rect.w,
+                  base_y);
+
+  SDL_RenderLine(g_windowChild.renderer,
+                  g_hist.rect.x,
+                  g_hist.rect.y,
+                  g_hist.rect.x,
+                  base_y);
+  SDL_Log(">>> renderHistogramBars()");
 }
+
 
 
 
