@@ -73,6 +73,9 @@ struct Histogram
     SDL_FRect rect;
 };
 
+float counterIntensity[256];
+float counterIntensityEqualized[256];
+bool equalized = false;
 
 // Global variables
 
@@ -114,6 +117,8 @@ static void loadImage();
 static void render();
 static void createHistogram();
 static void renderHistogram();
+static void renderHistogramBars();
+static void countIntensity();
 
 // Function implementations
 
@@ -122,6 +127,7 @@ bool MyWindow_initialize(MyWindow *window, const char *title, int width, int hei
   SDL_Log("\tMyWindow_initialize(%s, %d, %d)", title, width, height);
   return SDL_CreateWindowAndRenderer(title, width, height, window_flags, &window->window, &window->renderer);
 }
+
 
 void MyWindow_destroy(MyWindow *window)
 {
@@ -137,6 +143,7 @@ void MyWindow_destroy(MyWindow *window)
 
   SDL_Log("<<< MyWindow_destroy()");
 }
+
 
 void MyImage_destroy(MyImage *image)
 {
@@ -169,9 +176,17 @@ void MyImage_destroy(MyImage *image)
   SDL_Log("<<< MyImage_destroy()");
 }
 
+
 static SDL_AppResult initialize(void)
 {
   SDL_Log(">>> initialize()");
+
+  SDL_Log("Inicializando variáveis...");
+
+  for(int i=0;i<256;i++){
+    counterIntensity[i]=0;
+    counterIntensityEqualized[i]=0;
+  }
 
   SDL_Log("\tIniciando SDL...");
   if (!SDL_Init(SDL_INIT_VIDEO))
@@ -214,6 +229,7 @@ static SDL_AppResult initialize(void)
   return SDL_APP_CONTINUE;
 }
 
+
 static void shutdown(void)
 {
   SDL_Log(">>> shutdown()");
@@ -228,6 +244,7 @@ static void shutdown(void)
   SDL_Log("<<< shutdown()");
 }
 
+
 static void render(void)
 {
   SDL_SetRenderDrawColor(g_window.renderer, 128, 128, 128, 255);
@@ -239,8 +256,10 @@ static void render(void)
   SDL_RenderClear(g_windowChild.renderer);
   renderButton();
   renderHistogram();
+  renderHistogramBars();
   SDL_RenderPresent(g_windowChild.renderer);
 }
+
 
 static void loop(void)
 {
@@ -319,6 +338,7 @@ static void loop(void)
 }
 
 //------------------------------------------------------------------------------
+
 void createWindow()
 {
     int imageWidth = (int)g_image.rect.w;
@@ -353,6 +373,7 @@ void createWindow()
     SDL_SyncWindow(g_windowChild.window);
 }
 
+
 bool isGrayScale(SDL_Surface *surface)
 {
   SDL_Log("<<< isGrayScale()");
@@ -375,6 +396,7 @@ bool isGrayScale(SDL_Surface *surface)
   SDL_UnlockSurface(surface);
   return(true);
 }
+
 
 void convertToGray(SDL_Surface *surface)
 {
@@ -453,7 +475,7 @@ void loadImage(const char *filename, SDL_Renderer *renderer, MyImage *output_ima
   if(!isGray){
     convertToGray(output_image->surface);
   }
-
+  countIntensity(output_image->surface);
 
   SDL_Log("\tCriando textura a partir da superfície...");
   output_image->texture = SDL_CreateTextureFromSurface(renderer, output_image->surface);
@@ -469,6 +491,7 @@ void loadImage(const char *filename, SDL_Renderer *renderer, MyImage *output_ima
 
   SDL_Log("<<< load_rgba32(\"%s\")", filename);
 }
+
 
 void toggleButtonText()
 {
@@ -580,6 +603,7 @@ void createButton()
   SDL_Log(">>> createButton()");
 }
 
+
 void renderHistogram()
 {
     SDL_Log("<<< renderHistogram()");
@@ -613,12 +637,41 @@ void renderHistogram()
 
 void createHistogram()
 {
+  SDL_Log("<<< createHistogram()");
   g_hist.rect.w = 280;
   g_hist.rect.h = 200;
 
   g_hist.rect.x = (float)DEFAULT_WINDOW_CHILD_WIDTH / 2.0f - (float)g_hist.rect.w / 2.0f;
 
   g_hist.rect.y = (float)DEFAULT_WINDOW_CHILD_HEIGHT / 2.0f - (float)g_hist.rect.h/ 1.7f; 
+  SDL_Log(">>> createHistogram()");
+}
+
+
+void renderHistogramBars()
+{
+  float *intensity = equalized ? counterIntensityEqualized : counterIntensity;
+
+  SDL_SetRenderDrawColor(g_windowChild.renderer, 0, 0, 0, 255);
+
+  float base_y = g_hist.rect.y + g_hist.rect.h - 1;
+  float max_bar_height = g_hist.rect.h - 20;
+
+  float max_value = 0.0f;
+  for(int i=0;i<256;i++)
+      if(intensity[i] > max_value) max_value = intensity[i];
+
+  if(max_value == 0) max_value = 1.0f;
+
+  for(int i=0;i<256;i++)
+  {
+    SDL_FRect bar;
+    bar.w = (float)g_hist.rect.w / 256.0f;
+    bar.h = (intensity[i] / max_value) * max_bar_height;
+    bar.x = g_hist.rect.x + i * bar.w;
+    bar.y = base_y - bar.h;
+    SDL_RenderFillRect(g_windowChild.renderer, &bar);
+  }
 }
 
 
@@ -628,6 +681,51 @@ void loadHistogramButton()
   createButton();
   createHistogram();
 }
+
+
+void countIntensity(SDL_Surface *surface)
+{
+  SDL_Log(">>> countIntensity()");
+
+  if (!surface) return;
+
+  for(int i = 0; i < 256; i++)
+  {
+      counterIntensity[i] = 0.0f;
+      counterIntensityEqualized[i] = 0.0f;
+  }
+
+  SDL_LockSurface(surface);
+  Uint32 *pixels = (Uint32*)surface->pixels;
+  int size = surface->w * surface->h;
+  const SDL_PixelFormatDetails *format = SDL_GetPixelFormatDetails(surface->format);
+
+  for(int i=0;i<size;i++)
+  {
+      Uint8 r, g, b, a;
+      SDL_GetRGBA(pixels[i], format, NULL, &r, &g, &b, &a);
+      Uint8 intensity = r;
+
+      if(equalized)
+          counterIntensityEqualized[intensity]++;
+      else
+          counterIntensity[intensity]++;
+  }
+
+  SDL_UnlockSurface(surface);
+
+  for(int i=0;i<256;i++)
+  {
+    if(equalized)
+        counterIntensityEqualized[i] = (counterIntensityEqualized[i] / size) * 100.0f;
+    else
+        counterIntensity[i] = (counterIntensity[i] / size) * 100.0f;
+  }
+
+  SDL_Log("<<< countIntensity()");
+}
+
+
 
 int main(int argc, char *argv[])
 {
