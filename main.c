@@ -503,11 +503,9 @@ void toggleButtonText()
       SDL_DestroyTexture(g_button.text_texture);
       g_button.text_texture = NULL;
     }
-    TTF_Font *font = TTF_OpenFont("C:/Windows/Fonts/Arial.ttf", 24);
-    if(!font)
-    {
-      SDL_Log("*** Erro ao abrir fonte: %s", SDL_GetError());
-      return;
+    TTF_Font *font = TTF_OpenFont("font/Roboto-Regular.ttf", 15);
+    if (!font) {
+        SDL_Log("Erro ao carregar fonte: %s", SDL_GetError());
     }
     SDL_Surface *text_surface = TTF_RenderText_Solid(font, g_button.text, SDL_strlen(g_button.text), (SDL_Color){0,0,0,255});
     if(text_surface)
@@ -570,7 +568,7 @@ void renderButton()
 void createButton()
 {
   SDL_Log("<<< createButton()");
-  TTF_Font *font = TTF_OpenFont("C:/Windows/Fonts/Arial.ttf", 24);
+  TTF_Font *font = TTF_OpenFont("font/Roboto-Regular.ttf", 15);
   if(!font)
   {
     SDL_Log("*** Erro ao abrir fonte: %s", SDL_GetError());
