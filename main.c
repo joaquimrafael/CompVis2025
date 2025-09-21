@@ -17,6 +17,7 @@ Lucas Trebacchetti Eiras - 10401973
 #include <SDL3/SDL_main.h>
 #include <SDL3_image/SDL_image.h>
 #include <SDL3_ttf/SDL_ttf.h>
+#include <math.h>
 
 // Constants
 
@@ -74,14 +75,16 @@ struct Histogram
     SDL_FRect rect;
 };
 
+// Global variables
+
 float counterIntensity[256];
 float counterIntensityEqualized[256];
 bool equalized = false;
 SDL_FRect histBars[256];
 SDL_Surface *originalSurface;
 SDL_Surface *equalizedSurface;
-
-// Global variables
+char *contrast;
+char *brightness;
 
 static MyWindow g_window = { .window = NULL, .renderer = NULL };
 static MyWindow g_windowChild = {.window = NULL, .renderer = NULL};
@@ -124,7 +127,8 @@ static void renderHistogramBars();
 static void countIntensity(SDL_Surface *surface);
 static void equalize(SDL_Surface *surface);
 static void createTextureSurface(SDL_Renderer *renderer);
-static void copySurfacePixels(SDL_Surface *src, SDL_Surface *dst);
+static void analyzeImage(SDL_Surface *surface);
+static void renderImageStats();
 
 // Function implementations
 
@@ -218,7 +222,8 @@ static SDL_AppResult initialize(void)
     return SDL_APP_FAILURE;
   }
   
-  if(SDL_SetWindowParent(&g_windowChild.window, &g_window.window) != 0) {
+  if(!SDL_SetWindowParent(&g_windowChild.window, &g_window.window)) 
+  {
     SDL_Log("\tErro setar parentesco entre a janela filho e pai: %s", SDL_GetError());
     SDL_Log("<<< initialize()");
     return SDL_APP_FAILURE;
@@ -262,6 +267,7 @@ static void render(void)
   SDL_RenderClear(g_windowChild.renderer);
   renderButton();
   renderHistogramBars();
+  renderImageStats();
   SDL_RenderPresent(g_windowChild.renderer);
 }
 
@@ -336,10 +342,11 @@ static void loop(void)
             g_button.is_pressed = false;
             mustRefresh = true;
             break;
-            
+
         case SDL_EVENT_KEY_DOWN:
           if(event.key.key == SDLK_S){
-            if(IMG_SavePNG(g_image.surface, DEFAULT_OUTPUT_FILENAME) != 0){
+            SDL_ClearError();
+            if (!IMG_SavePNG(g_image.surface, DEFAULT_OUTPUT_FILENAME)) {
               SDL_Log("Erro ao salvar a imagem: %s", SDL_GetError());
             } else {
               SDL_Log("Imagem salva como %s", DEFAULT_OUTPUT_FILENAME);
@@ -505,45 +512,10 @@ void loadImage(const char *filename, SDL_Renderer *renderer, MyImage *output_ima
   equalizedSurface = NULL;
   equalized = false;
   createTextureSurface(renderer);
+  analyzeImage(output_image->surface);
 
   SDL_Log("<<< load_rgba32(\"%s\")", filename);
 }
-
-void copySurfacePixels(SDL_Surface *src, SDL_Surface *dst)
-{
-  if (!src || !dst) {
-    SDL_Log("*** Erro: Superfície inválida (src ou dst == NULL).");
-    return;
-  }
-
-  if (src->w != dst->w || src->h != dst->h) {
-    SDL_Log("*** Erro: As superfícies devem ter o mesmo tamanho e formato.");
-    return;
-  }
-
-  if (SDL_LockSurface(src) != 0) {
-    SDL_Log("*** Erro ao travar superfície origem: %s", SDL_GetError());
-    return;
-  }
-
-  if (SDL_LockSurface(dst) != 0) {
-    SDL_Log("*** Erro ao travar superfície destino: %s", SDL_GetError());
-    SDL_UnlockSurface(src);
-    return;
-  }
-
-  for (int y = 0; y < src->h; y++) {
-    memcpy(
-      (Uint8*)dst->pixels + y * dst->pitch,
-      (Uint8*)src->pixels + y * src->pitch,
-      src->w * SDL_BYTESPERPIXEL(src->format)
-    );
-  }
-
-  SDL_UnlockSurface(src);
-  SDL_UnlockSurface(dst);
-}
-
 
 void createTextureSurface(SDL_Renderer *renderer)
 {
@@ -584,7 +556,7 @@ void toggleButtonText()
     if (!font) {
         SDL_Log("Erro ao carregar fonte: %s", SDL_GetError());
     }
-    SDL_Surface *text_surface = TTF_RenderText_Solid(font, g_button.text, SDL_strlen(g_button.text), (SDL_Color){0,0,0,255});
+    SDL_Surface *text_surface = TTF_RenderText_Blended(font, g_button.text, SDL_strlen(g_button.text), (SDL_Color){0,0,0,255});
     if(text_surface)
     {
       g_button.text_texture = SDL_CreateTextureFromSurface(g_windowChild.renderer, text_surface);
@@ -657,7 +629,7 @@ void createButton()
   
   g_button.text = BUTTON_ORIGINAL;
   
-  SDL_Surface *text_surface = TTF_RenderText_Solid(font, BUTTON_ORIGINAL, SDL_strlen(BUTTON_ORIGINAL), (SDL_Color){0, 0, 0, 255});
+  SDL_Surface *text_surface = TTF_RenderText_Blended(font, BUTTON_ORIGINAL, SDL_strlen(BUTTON_ORIGINAL), (SDL_Color){0, 0, 0, 255});
   if(text_surface)
   {
     g_button.text_texture = SDL_CreateTextureFromSurface(g_windowChild.renderer, text_surface);
@@ -767,7 +739,7 @@ void equalize(SDL_Surface *surface)
 
   for(int i = 0; i < 256; i++) 
   {
-    lut[i] = (Uint8)((cdf[i] * 255.0) / size + 0.5);
+    lut[i] = (Uint8)((cdf[i] * 255.0) / size + 0.05);
   }
 
   for(int i = 0; i < size; i++) 
@@ -845,6 +817,77 @@ void countIntensity(SDL_Surface *surface)
   SDL_Log("<<< countIntensity()");
 }
 
+void analyzeImage(SDL_Surface *surface) 
+{
+  SDL_Log(">>> analyzeImage()");
+  if (!surface) return;
+
+  SDL_LockSurface(surface);
+  Uint32 *pixels = (Uint32*)surface->pixels;
+  int size = surface->w * surface->h;
+  const SDL_PixelFormatDetails *format = SDL_GetPixelFormatDetails(surface->format);
+
+  double sum = 0.0;
+  double sum_sq = 0.0;
+
+  for (int i = 0; i < size; i++) 
+  {
+    Uint8 r, g, b, a;
+    SDL_GetRGBA(pixels[i], format, NULL, &r, &g, &b, &a);
+    Uint8 intensity = r; 
+    sum += intensity;
+    sum_sq += intensity * intensity;
+  }
+
+  SDL_UnlockSurface(surface);
+
+  double mean = sum / size;
+  double variance = (sum_sq / size) - (mean * mean);
+  double stddev = sqrt(variance);
+
+  if (mean < 85) brightness = "Imagem: Escura";
+  else if (mean < 170) brightness = "Imagem: Média";
+  else brightness = "Imagem: Clara";
+
+  if (stddev < 50) contrast = "Contraste: Baixo";
+  else if (stddev < 100) contrast = "Contraste: Médio";
+  else contrast = "Contraste: Alto";
+
+  SDL_Log("Média: %.2f (%s)", mean, brightness);
+  SDL_Log("Desvio padrão: %.2f (Contraste %s)", stddev, contrast);
+}
+
+void renderImageStats() 
+{
+  TTF_Font *font = TTF_OpenFont("font/Roboto-Regular.ttf", 14);
+  if (!font) 
+  {
+    SDL_Log("Erro ao carregar fonte: %s", SDL_GetError());
+    return;
+  }
+
+  SDL_Surface *text_surface1 = TTF_RenderText_Blended(font, brightness, SDL_strlen(brightness), (SDL_Color){0,0,0,255});
+  SDL_Texture *text_texture1 = SDL_CreateTextureFromSurface(g_windowChild.renderer, text_surface1);
+
+  SDL_Surface *text_surface2 = TTF_RenderText_Blended(font, contrast, SDL_strlen(contrast), (SDL_Color){0,0,0,255});
+  SDL_Texture *text_texture2 = SDL_CreateTextureFromSurface(g_windowChild.renderer, text_surface2);
+
+  int win_w, win_h;
+  SDL_GetWindowSize(g_windowChild.window, &win_w, &win_h);
+
+  SDL_FRect text_rect1 = { (win_w - text_surface1->w) / 2.0f, 10, text_surface1->w, text_surface1->h };
+  SDL_RenderTexture(g_windowChild.renderer, text_texture1, NULL, &text_rect1);
+
+  SDL_FRect text_rect2 = { (win_w - text_surface2->w) / 2.0f, 10 + text_surface1->h + 5, text_surface2->w, text_surface2->h };
+  SDL_RenderTexture(g_windowChild.renderer, text_texture2, NULL, &text_rect2);
+
+  SDL_DestroySurface(text_surface1);
+  SDL_DestroySurface(text_surface2);
+  SDL_DestroyTexture(text_texture1);
+  SDL_DestroyTexture(text_texture2);
+
+  TTF_CloseFont(font);
+}
 
 
 int main(int argc, char *argv[])
