@@ -76,6 +76,9 @@ struct Histogram
 float counterIntensity[256];
 float counterIntensityEqualized[256];
 bool equalized = false;
+SDL_FRect histBars[256];
+SDL_Surface *originalSurface;
+SDL_Surface *equalizedSurface;
 
 // Global variables
 
@@ -113,11 +116,14 @@ static void renderButton();
 static void toggleButtonText();
 static void loadHistogramButton();
 static SDL_AppResult initialize();
-static void loadImage();
+static void loadImage(const char *filename, SDL_Renderer *renderer, MyImage *output_image);
 static void render();
 static void createHistogram();
 static void renderHistogramBars();
-static void countIntensity();
+static void countIntensity(SDL_Surface *surface);
+static void equalize(SDL_Surface *surface);
+static void createTextureSurface(SDL_Renderer *renderer);
+static void copySurfacePixels(SDL_Surface *src, SDL_Surface *dst);
 
 // Function implementations
 
@@ -292,6 +298,16 @@ static void loop(void)
     if(g_button.was_clicked)
     {
       toggleButtonText();
+      equalized = !equalized;
+      if(equalized){
+        equalize(g_image.surface);
+        countIntensity(equalizedSurface);
+      }
+      else{
+        g_image.surface = SDL_ConvertSurface(originalSurface, SDL_PIXELFORMAT_RGBA32);
+        countIntensity(originalSurface);
+      }
+      createTextureSurface(g_window.renderer);
       g_button.was_clicked = false;
       mustRefresh = true;
     }
@@ -474,20 +490,70 @@ void loadImage(const char *filename, SDL_Renderer *renderer, MyImage *output_ima
     convertToGray(output_image->surface);
   }
   countIntensity(output_image->surface);
+  originalSurface = SDL_ConvertSurface(output_image->surface, SDL_PIXELFORMAT_RGBA32);
+  equalizedSurface = NULL;
+  equalized = false;
+  createTextureSurface(renderer);
 
-  SDL_Log("\tCriando textura a partir da superfície...");
-  output_image->texture = SDL_CreateTextureFromSurface(renderer, output_image->surface);
-  if (!output_image->texture)
-  {
-    SDL_Log("\t*** Erro ao criar textura: %s", SDL_GetError());
-    SDL_Log("<<< load_rgba32(\"%s\")", filename);
+  SDL_Log("<<< load_rgba32(\"%s\")", filename);
+}
+
+void copySurfacePixels(SDL_Surface *src, SDL_Surface *dst)
+{
+  if (!src || !dst) {
+    SDL_Log("*** Erro: Superfície inválida (src ou dst == NULL).");
     return;
   }
 
-  SDL_Log("\tObtendo dimensões da textura...");
-  SDL_GetTextureSize(output_image->texture, &output_image->rect.w, &output_image->rect.h);
+  if (src->w != dst->w || src->h != dst->h) {
+    SDL_Log("*** Erro: As superfícies devem ter o mesmo tamanho e formato.");
+    return;
+  }
 
-  SDL_Log("<<< load_rgba32(\"%s\")", filename);
+  if (SDL_LockSurface(src) != 0) {
+    SDL_Log("*** Erro ao travar superfície origem: %s", SDL_GetError());
+    return;
+  }
+
+  if (SDL_LockSurface(dst) != 0) {
+    SDL_Log("*** Erro ao travar superfície destino: %s", SDL_GetError());
+    SDL_UnlockSurface(src);
+    return;
+  }
+
+  for (int y = 0; y < src->h; y++) {
+    memcpy(
+      (Uint8*)dst->pixels + y * dst->pitch,
+      (Uint8*)src->pixels + y * src->pitch,
+      src->w * SDL_BYTESPERPIXEL(src->format)
+    );
+  }
+
+  SDL_UnlockSurface(src);
+  SDL_UnlockSurface(dst);
+}
+
+
+void createTextureSurface(SDL_Renderer *renderer)
+{
+  SDL_Surface *surface_to_use = equalized ? equalizedSurface : originalSurface;
+  if (!surface_to_use) {
+    SDL_Log("*** Erro: Superfície para criar textura é NULL.");
+      return;
+  }
+
+  if(g_image.texture) {
+    SDL_DestroyTexture(g_image.texture);
+      g_image.texture = NULL;
+  }
+
+  g_image.texture = SDL_CreateTextureFromSurface(renderer, surface_to_use);
+  if (!g_image.texture)
+    SDL_Log("*** Erro ao criar textura: %s", SDL_GetError());
+
+  SDL_Log("\tObtendo dimensões da textura...");
+  SDL_GetTextureSize(g_image.texture, &g_image.rect.w, &g_image.rect.h);
+  
 }
 
 
@@ -636,6 +702,7 @@ void renderHistogramBars()
       bar.h = (intensity[i] / max_value) * max_bar_height;
       bar.x = g_hist.rect.x + i * bar_w;
       bar.y = base_y - bar.h;
+      histBars[i] = bar;
       SDL_RenderFillRect(g_windowChild.renderer, &bar);
   }
 
@@ -654,7 +721,68 @@ void renderHistogramBars()
   SDL_Log(">>> renderHistogramBars()");
 }
 
+void equalize(SDL_Surface *surface)
+{
+  SDL_Log("<<< equalize()");
+  if (!surface) return;
 
+  SDL_LockSurface(surface);
+
+  Uint32 *pixel = (Uint32*)surface->pixels;
+
+  int size = surface->w * surface->h;
+
+  const SDL_PixelFormatDetails *format = SDL_GetPixelFormatDetails(surface->format);
+
+  int hist[256] = {0};
+
+  for(int i=0;i<size;i++) 
+  {
+    Uint8 r,g,b,a;
+    SDL_GetRGBA(pixel[i], format, NULL, &r, &g, &b, &a);
+    hist[r]++; 
+  }
+
+  int cdf[256];
+
+  cdf[0] = hist[0];
+
+  for(int i = 1; i < 256; i++) 
+  {
+    cdf[i] = cdf[i-1] + hist[i];
+  }
+
+  Uint8 lut[256];
+
+  for(int i = 0; i < 256; i++) 
+  {
+    lut[i] = (Uint8)((cdf[i] * 255.0) / size + 0.5);
+  }
+
+  for(int i = 0; i < size; i++) 
+  {
+    Uint8 r,g,b,a;
+    SDL_GetRGBA(pixel[i], format, NULL, &r, &g, &b, &a);
+    Uint8 eq = lut[r];
+    pixel[i] = SDL_MapRGBA(format, NULL, eq, eq, eq, a);
+  }
+
+  SDL_UnlockSurface(surface);
+
+  for(int i = 0; i < 256; i++)
+    counterIntensityEqualized[i] = 0.0f;
+
+  for(int i = 0; i < size; i++) 
+  {
+    Uint8 r,g,b,a;
+    SDL_GetRGBA(pixel[i], format, NULL, &r, &g, &b, &a);
+    counterIntensityEqualized[r] += 1.0f;
+  }
+
+  equalizedSurface = SDL_ConvertSurface(surface, SDL_PIXELFORMAT_RGBA32);
+
+  SDL_Log(">>> equalize()");
+}
 
 
 void loadHistogramButton()
