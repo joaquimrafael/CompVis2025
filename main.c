@@ -138,7 +138,6 @@ bool MyWindow_initialize(MyWindow *window, const char *title, int width, int hei
   return SDL_CreateWindowAndRenderer(title, width, height, window_flags, &window->window, &window->renderer);
 }
 
-
 void MyWindow_destroy(MyWindow *window)
 {
   SDL_Log(">>> MyWindow_destroy()");
@@ -153,7 +152,6 @@ void MyWindow_destroy(MyWindow *window)
 
   SDL_Log("<<< MyWindow_destroy()");
 }
-
 
 void MyImage_destroy(MyImage *image)
 {
@@ -185,7 +183,6 @@ void MyImage_destroy(MyImage *image)
 
   SDL_Log("<<< MyImage_destroy()");
 }
-
 
 static SDL_AppResult initialize(void)
 {
@@ -222,7 +219,7 @@ static SDL_AppResult initialize(void)
     return SDL_APP_FAILURE;
   }
   
-  if(!SDL_SetWindowParent(&g_windowChild.window, &g_window.window)) 
+  if(SDL_SetWindowParent(&g_windowChild.window, &g_window.window) != 0) 
   {
     SDL_Log("\tErro setar parentesco entre a janela filho e pai: %s", SDL_GetError());
     SDL_Log("<<< initialize()");
@@ -240,7 +237,6 @@ static SDL_AppResult initialize(void)
   return SDL_APP_CONTINUE;
 }
 
-
 static void shutdown(void)
 {
   SDL_Log(">>> shutdown()");
@@ -254,7 +250,6 @@ static void shutdown(void)
 
   SDL_Log("<<< shutdown()");
 }
-
 
 static void render(void)
 {
@@ -270,7 +265,6 @@ static void render(void)
   renderImageStats();
   SDL_RenderPresent(g_windowChild.renderer);
 }
-
 
 static void loop(void)
 {
@@ -357,19 +351,16 @@ static void loop(void)
     }
     if(mustRefresh)
     {
-        render();
-        mustRefresh = false;
+      render();
+      mustRefresh = false;
     }
     SDL_Delay(10);
 }
-
   SDL_DestroyCursor(cursor_arrow);
   SDL_DestroyCursor(cursor_hand);
   
   SDL_Log("<<< loop()");
 }
-
-//------------------------------------------------------------------------------
 
 void createWindow()
 {
@@ -381,15 +372,15 @@ void createWindow()
     
     if (imageWidth > DEFAULT_WINDOW_WIDTH || imageHeight > DEFAULT_WINDOW_HEIGHT)
     {
-        int top = 0;
-        int left = 0;
-        SDL_GetWindowBordersSize(g_window.window, &top, &left, NULL, NULL);
+      int top = 0;
+      int left = 0;
+      SDL_GetWindowBordersSize(g_window.window, &top, &left, NULL, NULL);
 
-        SDL_Log("Redefinindo dimensões da janela, de (%d, %d) para (%d, %d), e alterando a posição para (%d, %d).",
-        DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, imageWidth, imageHeight, left, top);
+      SDL_Log("Redefinindo dimensões da janela, de (%d, %d) para (%d, %d), e alterando a posição para (%d, %d).",
+      DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, imageWidth, imageHeight, left, top);
 
-        SDL_SetWindowSize(g_window.window, imageWidth, imageHeight);
-        SDL_SetWindowPosition(g_window.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+      SDL_SetWindowSize(g_window.window, imageWidth, imageHeight);
+      SDL_SetWindowPosition(g_window.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     }
 
     SDL_SetWindowSize(g_windowChild.window, imageWidthChild, imageWidthHeight);
@@ -405,7 +396,6 @@ void createWindow()
     SDL_SyncWindow(g_windowChild.window);
 }
 
-
 bool isGrayScale(SDL_Surface *surface)
 {
   SDL_Log("<<< isGrayScale()");
@@ -418,7 +408,8 @@ bool isGrayScale(SDL_Surface *surface)
   {
     Uint8 r,g,b,a;
     SDL_GetRGBA(pixel[i], format,NULL,&r,&g,&b,&a);
-    if(!(r==g && g==b)){
+    if(!(r==g && g==b))
+    {
       SDL_UnlockSurface(surface);
       return(false);
     }
@@ -428,7 +419,6 @@ bool isGrayScale(SDL_Surface *surface)
   SDL_UnlockSurface(surface);
   return(true);
 }
-
 
 void convertToGray(SDL_Surface *surface)
 {
@@ -453,7 +443,6 @@ void convertToGray(SDL_Surface *surface)
     SDL_UnlockSurface(surface);
     SDL_Log(">>> convertToGray()");
 }
-
 
 void loadImage(const char *filename, SDL_Renderer *renderer, MyImage *output_image)
 {
@@ -520,14 +509,16 @@ void loadImage(const char *filename, SDL_Renderer *renderer, MyImage *output_ima
 void createTextureSurface(SDL_Renderer *renderer)
 {
   SDL_Surface *surface_to_use = equalized ? equalizedSurface : originalSurface;
-  if (!surface_to_use) {
+  if (!surface_to_use) 
+  {
     SDL_Log("*** Erro: Superfície para criar textura é NULL.");
-      return;
+    return;
   }
 
-  if(g_image.texture) {
+  if(g_image.texture) 
+  {
     SDL_DestroyTexture(g_image.texture);
-      g_image.texture = NULL;
+    g_image.texture = NULL;
   }
 
   g_image.texture = SDL_CreateTextureFromSurface(renderer, surface_to_use);
@@ -536,9 +527,7 @@ void createTextureSurface(SDL_Renderer *renderer)
 
   SDL_Log("\tObtendo dimensões da textura...");
   SDL_GetTextureSize(g_image.texture, &g_image.rect.w, &g_image.rect.h);
-  
 }
-
 
 void toggleButtonText()
 {
@@ -574,7 +563,6 @@ void toggleButtonText()
     SDL_Log(">>> toggleButtonText()");
 }
 
-
 void renderButton()
 {
   SDL_Log("<<< renderButton()");
@@ -587,7 +575,8 @@ void renderButton()
   {
       current_color = g_button.color_hover;
   }
-  if(g_button.text_texture){
+  if(g_button.text_texture)
+  {
     int padding_x = 15;
     int padding_y = 5;
     int window_w, window_h;
@@ -612,7 +601,6 @@ void renderButton()
   }
   SDL_Log(">>> renderButton()");
 }
-
 
 void createButton()
 {
@@ -648,7 +636,6 @@ void createButton()
   SDL_Log(">>> createButton()");
 }
 
-
 void createHistogram()
 {
   SDL_Log("<<< createHistogram()");
@@ -660,7 +647,6 @@ void createHistogram()
   g_hist.rect.y = (float)DEFAULT_WINDOW_CHILD_HEIGHT / 2.0f - (float)g_hist.rect.h/ 1.7f; 
   SDL_Log(">>> createHistogram()");
 }
-
 
 void renderHistogramBars()
 {
@@ -767,13 +753,11 @@ void equalize(SDL_Surface *surface)
   SDL_Log(">>> equalize()");
 }
 
-
 void loadHistogramButton()
 {
   createButton();
   createHistogram();
 }
-
 
 void countIntensity(SDL_Surface *surface)
 {
@@ -889,12 +873,14 @@ void renderImageStats()
   TTF_CloseFont(font);
 }
 
+//------------------------------------------------------------------------------
 
 int main(int argc, char *argv[])
 {
     atexit(shutdown);
 
-    if(argc < 2) {
+    if(argc < 2) 
+    {
         SDL_Log("Uso: %s <arquivo de imagem>", argv[0]);
         return SDL_APP_FAILURE;
     }
