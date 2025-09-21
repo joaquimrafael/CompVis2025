@@ -25,6 +25,7 @@ static const char *WINDOW_TITLE2 = "Tela Secundária";
 static const char *BUTTON_ORIGINAL = "Original";
 static const char *BUTTON_EQUALIZED = "Equalizado";
 char *IMAGE_FILENAME;
+static const char *DEFAULT_OUTPUT_FILENAME = "output.png";
 
 enum constants
 {
@@ -335,6 +336,16 @@ static void loop(void)
             g_button.is_pressed = false;
             mustRefresh = true;
             break;
+            
+        case SDL_EVENT_KEY_DOWN:
+          if(event.key.key == SDLK_S){
+            if(IMG_SavePNG(g_image.surface, DEFAULT_OUTPUT_FILENAME) != 0){
+              SDL_Log("Erro ao salvar a imagem: %s", SDL_GetError());
+            } else {
+              SDL_Log("Imagem salva como %s", DEFAULT_OUTPUT_FILENAME);
+            }
+          }
+          break;
       }
     }
     if(mustRefresh)
