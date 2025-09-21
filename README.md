@@ -34,11 +34,41 @@ SDL (Simple DirectMedia Layer) em sua versão 3.
 
 #### Antonio
 
+* Documentacao
+* Criacao do histograma
+* Escalas de cinza
+* Configuracao do botao
+* Refinamento
+
 #### Gustavo
+
+* Documentacao
+* Consulta Teorica
+* Carregamento da imagem
+* Salvamento da imagem output
+* Code review
 
 #### Joaquim
 
+* Arquitetura do projeto
+* Criacao do repositorio e organizacao dos arquivos
+* Carregamento da Imagem e adaptacao do tamanho da janela
+* Criacao da janela secundaria
+* Calculo do histograma e equalizacao
+* Salvamento da imagem output
+* Interacao com o botao
+* Mostrar Caracteristicas da imagem
+* Code Review e refinamentos
+
 #### Lucas
+
+* Conversao e dectacao tons de cinza
+* Geracao da janela secundaria
+* Criacao do histograma
+* Equalizacao
+* Configuracao do botao
+* Configuracao dos eventos
+* Code Review e refinamentos
 
 ### Compilação e Execução
 
@@ -49,5 +79,4 @@ SDL (Simple DirectMedia Layer) em sua versão 3.
 
 #### Windows
 
-* Compilar: Configurar SDL3 e SDL3_image em tasks.json do editor de texto e adicionar .dll(s) da lib
-* Executar: ./meu_app.exe <nome_do_arquivo>
+* Compilar & Executar: rodar makefile do projeto
