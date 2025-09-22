@@ -30,6 +30,7 @@ SDL (Simple DirectMedia Layer) em sua versão 3.
 
 ### Funcionamento do projeto
 
+#### Geral do código:
 #### 1. Entrada do programa  
 **1.1** O programa recebe o nome da imagem como argumento na linha de comando.  
 
@@ -37,14 +38,34 @@ SDL (Simple DirectMedia Layer) em sua versão 3.
 **2.1 Janela principal**: exibe a imagem carregada, podendo ser a versão **original** ou **equalizada**.  
 
 **2.2 Janela secundária**: exibe:  
-- **2.2.1** Botão de alternância entre os modos “Original” e “Equalizado”.  
-- **2.2.2** Histograma com a distribuição de intensidades da imagem.  
-- **2.2.3** Análise de brilho e contraste obtida a partir de estatísticas da imagem.  
+**2.2.1** Botão de alternância entre os modos “Original” e “Equalizado”.  
+**2.2.2** Histograma com a distribuição de intensidades da imagem.  
+**2.2.3** Análise de brilho e contraste obtida a partir de estatísticas da imagem.  
 
 #### 3. Funcionalidades extras  
 **3.1** Conversão automática de imagens coloridas para tons de cinza.  
 **3.2** Salvamento da imagem exibida pressionando a tecla **S**, gerando o arquivo `output.png`.  
 **3.3** Interatividade por botão e mudança de cursor ao passar sobre elementos interativos.  
+
+#### Explicação Detalhada:
+#### Histograma
+
+O histograma foi implementado para mostrar a distribuição de intensidades de cinza da imagem:
+
+- **Contagem de intensidades**: cada pixel é convertido para escala de cinza (quando necessário) e seu valor (0–255) é contabilizado.  
+- **Normalização para proporção (%)**: a frequência é convertida em proporção relativa para permitir comparações entre imagens diferentes:  
+
+`proporcao[i] = (contagem[i] / total_pixels) * 100`
+
+- **Escalonamento no gráfico**:  
+- Cada intensidade (0–255) é representada por uma barra.  
+- A altura da barra é proporcional à frequência normalizada, limitada a 200px de altura.  
+- Isso garante que a barra mais alta ocupe todo o espaço disponível e as demais fiquem proporcionais.  
+
+- **Renderização**:  
+- Eixo X → valores de intensidade (0–255).  
+- Eixo Y → frequência relativa.  
+- O gráfico é centralizado na janela secundária e desenhado em preto, com eixos destacados em rosa.  
 
 
 ### Contribuições individuas
