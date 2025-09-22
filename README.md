@@ -57,12 +57,12 @@ O histograma foi implementado para mostrar a distribuição de intensidades de c
 
 `proporcao[i] = (contagem[i] / total_pixels) * 100`
 
-- **Escalonamento no gráfico**:  
+**Escalonamento no gráfico**:  
 - Cada intensidade (0–255) é representada por uma barra.  
 - A altura da barra é proporcional à frequência normalizada, limitada a 200px de altura.  
 - Isso garante que a barra mais alta ocupe todo o espaço disponível e as demais fiquem proporcionais.  
 
-- **Renderização**:  
+**Renderização**:  
 - Eixo X → valores de intensidade (0–255).  
 - Eixo Y → frequência relativa.  
 - O gráfico é centralizado na janela secundária e desenhado em preto, com eixos destacados em rosa.  
