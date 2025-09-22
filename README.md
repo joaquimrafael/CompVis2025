@@ -67,6 +67,42 @@ O histograma foi implementado para mostrar a distribuição de intensidades de c
 - Eixo Y → frequência relativa.  
 - O gráfico é centralizado na janela secundária e desenhado em preto, com eixos destacados em rosa.  
 
+#### Classificação de Imagem (Brilho e Contraste)
+
+A classificação de uma imagem em termos de brilho e contraste, se da pela estatística da distribuição de intensidade de cada pixel da imagem.
+
+A métrica do brilho é a média, então calculamos a média da intensidade dos pixels e classificamos de acordo com o resultado:
+
+`media = soma(intensidade)/total pixels`
+
+- **Imagem escura**: média < 85
+- **Imagem média**: média entre 85 e 170
+- **Imagem clara**: média > 170
+
+A métrica do contraste é o desvio padrão, então calculamos e classificamos de acordo com o resultado:
+
+`variância = (soma(intensidade²)/total pixels) - (media²)`
+
+`desvio = sqrt(variância)`
+
+- **Contraste baixo**: desvio < 50
+- **Contraste médio**: desvio entre 50 e 100
+- **Contraste alto**: desvio > 100
+
+As duas métricas de classificação são exibidas no topo da janela secundária, facilitando um análise rápida da imagem.
+
+#### Estratégia para Equalização de Histograma
+
+No nosso projeto a equalização foi usada para melhorar o contraste da imagem, de acordo com o seguinte processo:
+
+- **Construção do histograma original**: Contagem da frequência de cada intensidade.
+- **Cálculo do CDF(função de distribuição acumulada)**: `cdf[i] = cdf[i-1] + hist[i]`
+- **Normalização da CDF (gerando uma tabela de transformação LUT)**: `lut[i] = (cdf[i] * 255)/total pixels`
+
+A transformação serve para redistribuir os pixels no histograma para que fiquem mais espalhados ao longo de toda faixa.
+
+- **Aplicação da LUT**: Cada pixel acaba sendo substituído pelo valor mapeado em lut[intensidade].
+- **Resultados**: Depois da equalização o contraste da imagem se apresenta melhor, e o histograma mostra uma distribuição mais uniforme.
 
 ### Contribuições individuas
 
