@@ -79,4 +79,7 @@ SDL (Simple DirectMedia Layer) em sua versão 3.
 
 #### Windows
 
-* Compilar & Executar: rodar makefile do projeto
+* Compilar & Executar: 
+* Baixar bibliotecas SDL3, SDL3_image, SDL_ttf e adicionar as respectivas .dll(s) na pasta do projeto
+* Comando de compilação: gcc main.c -I<path_para_includes> -L<path_para_libs> -lSDL3 -lSDL3_image -lSDL3_ttf
+* ./main.exe img/<imagem_escolhida>
