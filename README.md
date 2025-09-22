@@ -30,6 +30,20 @@ SDL (Simple DirectMedia Layer) em sua versão 3.
 
 ### Funcionamento do projeto
 
+Geral do código:
+1. Entrada do programa
+   1.1 O programa recebe o nome da imagem como argumento na linha de comando.
+2.Janelas de exibição
+   2.1 Janela principal: responsável por exibir a imagem carregada, podendo ser a versão original ou a equalizada.
+   2.2 Janela secundária: apresenta elementos complementares, incluindo:
+       2.2.1 Botão de alternância entre os modos “Original” e “Equalizado”.
+       2.2.2 Histograma com a distribuição de intensidades da imagem.
+       2.2.3 Análise de brilho e contraste obtida a partir de estatísticas da imagem.
+3. Funcionalidades extras
+   3.1 Conversão automática de imagens coloridas para tons de cinza, garantindo uniformidade no processamento.
+   3.2 Salvamento da imagem exibida pressionando a tecla S, gerando o arquivo output.png.
+   3.3 Interatividade na interface, incluindo clique no botão e mudança de cursor ao passar sobre os elementos interativos.
+
 ### Contribuições individuas
 
 #### Antonio
